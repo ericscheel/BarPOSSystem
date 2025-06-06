@@ -1,0 +1,18 @@
+# Diese Datei sorgt dafür, dass Build-Artefakte und temporäre Dateien nicht ins Repository gelangen
+
+# Java-Kompilat
+bin/
+*.class
+
+# IDE-spezifisch
+*.iml
+.idea/
+*.log
+
+# Betriebssystem
+.DS_Store
+Thumbs.db
+
+# Sonstiges
+*.jar
+!BarPOSSystem.jar

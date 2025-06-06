@@ -1,0 +1,27 @@
+name: Java CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+      - name: Java einrichten
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+      - name: Kompilieren
+        run: |
+          javac -d bin src/module-info.java src/com/barpos/*.java
+      - name: JAR erstellen
+        run: |
+          jar cfm BarPOSSystem.jar manifest.txt -C bin .
+      - name: (Optional) Tests ausführen
+        run: echo "Hier könnten Tests ausgeführt werden."
