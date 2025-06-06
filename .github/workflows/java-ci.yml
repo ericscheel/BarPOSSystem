@@ -21,14 +21,20 @@ jobs:
         run: |
           wget https://download2.gluonhq.com/openjfx/21.0.2/openjfx-21.0.2_linux-x64_bin-sdk.zip
           unzip openjfx-21.0.2_linux-x64_bin-sdk.zip
+      - name: JUnit herunterladen
+        run: |
+          wget https://repo1.maven.org/maven2/org/junit/platform/junit-platform-console-standalone/1.10.2/junit-platform-console-standalone-1.10.2.jar
       - name: JavaFX lib-Inhalt anzeigen
         run: |
           ls -l javafx-sdk-21.0.2/lib
-      - name: Kompilieren
+      - name: Kompilieren (ohne Tests)
         run: |
-          javac --module-path $GITHUB_WORKSPACE/javafx-sdk-21.0.2/lib --add-modules javafx.controls,javafx.fxml -d bin src/module-info.java src/com/barpos/*.java
+          find src/com/barpos -name '*.java' ! -name 'ProductTest.java' > sources.txt
+          javac --module-path $GITHUB_WORKSPACE/javafx-sdk-21.0.2/lib -d bin src/module-info.java @sources.txt
       - name: JAR erstellen
         run: |
           jar cfm BarPOSSystem.jar manifest.txt -C bin .
-      - name: (Optional) Tests ausführen
-        run: echo "Hier könnten Tests ausgeführt werden."
+      - name: Tests kompilieren und ausführen
+        run: |
+          javac -cp junit-platform-console-standalone-1.10.2.jar:bin --module-path $GITHUB_WORKSPACE/javafx-sdk-21.0.2/lib -d bin src/com/barpos/ProductTest.java
+          java -jar junit-platform-console-standalone-1.10.2.jar --class-path bin --scan-class-path
