@@ -17,16 +17,16 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '21'
-      - name: JavaFX herunterladen
+      - name: JavaFX herunterladen und entpacken
         run: |
           wget https://download2.gluonhq.com/openjfx/21.0.2/openjfx-21.0.2_linux-x64_bin-sdk.zip
           unzip openjfx-21.0.2_linux-x64_bin-sdk.zip
       - name: JavaFX lib-Inhalt anzeigen
         run: |
-          ls -l openjfx-21.0.2_linux-x64_bin-sdk/javafx-sdk-21.0.2/lib
+          ls -l javafx-sdk-21.0.2/lib
       - name: Kompilieren
         run: |
-          javac --module-path $GITHUB_WORKSPACE/openjfx-21.0.2_linux-x64_bin-sdk/javafx-sdk-21.0.2/lib --add-modules javafx.controls,javafx.fxml -d bin src/module-info.java src/com/barpos/*.java
+          javac --module-path $GITHUB_WORKSPACE/javafx-sdk-21.0.2/lib --add-modules javafx.controls,javafx.fxml -d bin src/module-info.java src/com/barpos/*.java
       - name: JAR erstellen
         run: |
           jar cfm BarPOSSystem.jar manifest.txt -C bin .
