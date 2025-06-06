@@ -1,83 +1,101 @@
 @echo off
-title BarPOS Installer Builder - Fixed
+title BarPOS Installer Builder - Fixed Paths
 color 0A
+
 echo ========================================
 echo       Bar POS Installer Builder
-echo          (JPackage + WiX - FIXED)
 echo ========================================
 echo.
 
-REM Arbeitsverzeichnis
-if not exist "C:\BarPOS-Build" mkdir "C:\BarPOS-Build"
-cd /d "C:\BarPOS-Build"
+REM Expliziter Pfad zur JAR-Datei
+set "JAR_PATH=%~dp0BarPOS.jar"
+set "WORK_DIR=%~dp0"
 
-echo 1. Pruefungen...
+echo Arbeitsverzeichnis: %WORK_DIR%
+echo JAR-Pfad: %JAR_PATH%
+echo.
 
-REM Alle Prüfungen...
-if not exist "BarPOS.jar" (
-    echo FEHLER: BarPOS.jar nicht gefunden!
+REM Prüfungen mit absoluten Pfaden
+if not exist "%JAR_PATH%" (
+    echo ❌ FEHLER: BarPOS.jar nicht gefunden!
+    echo Gesucht in: %JAR_PATH%
+    echo.
+    echo LÖSUNG:
+    echo 1. BarPOS.jar ins gleiche Verzeichnis wie dieses Script legen
+    echo 2. Oder aus Eclipse neu exportieren nach: %WORK_DIR%
+    echo.
+    echo Aktuelle Dateien im Verzeichnis:
+    dir /b "%WORK_DIR%"
+    echo.
     pause
     exit /b 1
 )
+
+echo ✓ BarPOS.jar gefunden: %JAR_PATH%
 
 if not exist "C:\javafx-sdk-21.0.7\lib" (
-    echo FEHLER: JavaFX SDK nicht gefunden in C:\javafx-sdk-21\lib
+    echo ❌ FEHLER: JavaFX SDK nicht gefunden!
+    echo Gesucht in: C:\javafx-sdk-21\lib
     pause
     exit /b 1
 )
 
-echo Alle Dateien gefunden!
+echo ✓ JavaFX SDK gefunden
 echo.
-echo 2. Erstelle Installer mit korrigierten JavaFX-Parametern...
+
+REM WiX testen
+candle /? >nul 2>&1
+if %errorlevel% neq 0 (
+    echo ❌ FEHLER: WiX Tools nicht gefunden!
+    echo PATH-Variable korrekt gesetzt?
+    pause
+    exit /b 1
+)
+
+echo ✓ WiX Tools gefunden
+echo.
+
+echo Erstelle Installer...
+echo JAR-Datei: %JAR_PATH%
+echo Zielverzeichnis: %WORK_DIR%installer\
 echo.
 
 REM Alte Builds löschen
-if exist "installer" rmdir /s /q "installer"
+if exist "%WORK_DIR%installer" rmdir /s /q "%WORK_DIR%installer"
 
-REM KORRIGIERTES JPackage mit expliziten JavaFX-Modulen
+REM JPackage mit absoluten Pfaden
 jpackage ^
-  --input . ^
+  --input "%WORK_DIR%" ^
   --name "BarPOS" ^
-  --main-jar BarPOS.jar ^
+  --main-jar "BarPOS.jar" ^
   --main-class com.barpos.ModernPOSSystem ^
   --type exe ^
-  --dest installer ^
+  --dest "%WORK_DIR%installer" ^
   --app-version 1.0 ^
-  --vendor "Eric-Marcell Scheel" ^
-  --description "Modernes Kassensystem fuer Bars und Restaurants" ^
-  --copyright "Copyright (c) 2025" ^
+  --vendor "Eric Scheel" ^
+  --description "Modernes Kassensystem" ^
   --win-dir-chooser ^
   --win-menu ^
   --win-shortcut ^
   --win-menu-group "Bar POS System" ^
   --module-path "C:\javafx-sdk-21.0.7\lib" ^
-  --add-modules javafx.controls,javafx.fxml,javafx.base,javafx.graphics,javafx.media,javafx.swing,javafx.web ^
-  --java-options "-Xms256m" ^
+  --add-modules javafx.controls,javafx.fxml,javafx.base,javafx.graphics ^
   --java-options "-Xmx1024m" ^
-  --java-options "-Dfile.encoding=UTF-8" ^
-  --java-options "-Djava.awt.headless=false" ^
-  --java-options "--add-exports=javafx.controls/com.sun.javafx.scene.control.behavior=ALL-UNNAMED" ^
-  --java-options "--add-exports=javafx.controls/com.sun.javafx.scene.control=ALL-UNNAMED" ^
-  --java-options "--add-opens=javafx.controls/javafx.scene.control=ALL-UNNAMED"
+  --java-options "-Dfile.encoding=UTF-8"
 
 if %errorlevel% equ 0 (
     echo.
     echo ========================================
-    echo           ERFOLGREICH!
+    echo           ✅ ERFOLGREICH!
     echo ========================================
     echo.
-    echo Installer: installer\BarPOS-1.0.exe
+    echo Installer erstellt: %WORK_DIR%installer\BarPOS-1.0.exe
     echo.
-    echo WICHTIG: Teste den Installer jetzt!
-    echo.
-    start explorer "installer"
+    start explorer "%WORK_DIR%installer"
 ) else (
     echo.
-    echo FEHLER beim Erstellen!
-    echo Pruefe:
-    echo - JavaFX SDK Pfad korrekt?
-    echo - JAR-Datei funktionsfaehig?
-    echo - Genug Speicherplatz?
+    echo ❌ FEHLER beim Erstellen des Installers!
+    echo Fehlercode: %errorlevel%
 )
 
 pause
