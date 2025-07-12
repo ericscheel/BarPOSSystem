@@ -22,6 +22,7 @@ public class BackendWindow {
     private ComboBox<String> categorySelectCombo;
     private TextField newCategoryField;
     private VBox existingCategoriesBox;
+    private Product editingProduct = null; // aktuell zu bearbeitendes Produkt
     
     public BackendWindow(Map<String, List<Product>> categories) {
         this.categories = categories;
@@ -191,20 +192,19 @@ public class BackendWindow {
         
         TableColumn<Product, Void> actionCol = new TableColumn<>("Aktionen");
         actionCol.setCellFactory(col -> new TableCell<Product, Void>() {
-            private final Button editBtn = createStyledButton("Bearbeiten", "#f39c12", 90, 30);
-            private final Button deleteBtn = createStyledButton("Löschen", "#e74c3c", 90, 30);
-            
-            {
-                editBtn.setOnAction(e -> editProduct(getTableRow().getItem()));
-                deleteBtn.setOnAction(e -> deleteProduct(getTableRow().getItem()));
-            }
-            
             @Override
             protected void updateItem(Void item, boolean empty) {
                 super.updateItem(item, empty);
-                if (empty) {
+                if (empty || getTableRow() == null || getTableRow().getItem() == null) {
                     setGraphic(null);
                 } else {
+                    Product product = getTableRow().getItem();
+                    Button editBtn = createStyledButton("Bearbeiten", "#f39c12", 90, 30);
+                    Button deleteBtn = createStyledButton("Löschen", "#e74c3c", 90, 30);
+
+                    editBtn.setOnAction(e -> editProduct(product));
+                    deleteBtn.setOnAction(e -> deleteProduct(product));
+
                     HBox buttons = new HBox(8);
                     buttons.setAlignment(Pos.CENTER);
                     buttons.getChildren().addAll(editBtn, deleteBtn);
@@ -425,10 +425,9 @@ public class BackendWindow {
     
     private void editProduct(Product product) {
         if (product != null) {
+            editingProduct = product;
             nameField.setText(product.getName());
             priceField.setText(String.valueOf(product.getPrice()));
-            
-            // Kategorie des Produkts finden und auswählen
             String category = findProductCategory(product);
             categorySelectCombo.setValue(category);
         }
@@ -463,46 +462,44 @@ public class BackendWindow {
             String name = nameField.getText().trim();
             String priceText = priceField.getText().trim();
             String selectedCategory = categorySelectCombo.getValue();
-            
+
             if (name.isEmpty() || priceText.isEmpty() || selectedCategory == null) {
                 showAlert("Fehler", "Bitte alle Felder ausfüllen und Kategorie auswählen.");
                 return;
             }
-            
+
             double price = Double.parseDouble(priceText);
-            
-            // Prüfen ob Produkt bereits existiert (für Updates)
-            boolean productExists = false;
-            Product existingProduct = null;
-            
-            for (List<Product> products : categories.values()) {
-                for (Product p : products) {
-                    if (p.getName().equalsIgnoreCase(name)) {
-                        productExists = true;
-                        existingProduct = p;
-                        break;
-                    }
+
+            if (editingProduct != null) {
+                // Produkt bearbeiten
+                String oldCategory = findProductCategory(editingProduct);
+                if (!oldCategory.equals(selectedCategory)) {
+                    // Kategorie gewechselt: Produkt verschieben
+                    categories.get(oldCategory).remove(editingProduct);
+                    categories.get(selectedCategory).add(editingProduct);
                 }
-                if (productExists) break;
-            }
-            
-            if (productExists) {
-                // Produkt aktualisieren
-                existingProduct.setName(name);
-                existingProduct.setPrice(price);
+                editingProduct.setName(name);
+                editingProduct.setPrice(price);
                 showAlert("Erfolg", "Produkt wurde aktualisiert.");
             } else {
                 // Neues Produkt hinzufügen
+                // Prüfe ob Produktname in Kategorie schon existiert
+                for (Product p : categories.get(selectedCategory)) {
+                    if (p.getName().equalsIgnoreCase(name)) {
+                        showAlert("Fehler", "Produktname existiert bereits in dieser Kategorie.");
+                        return;
+                    }
+                }
                 Product newProduct = new Product(name, price);
                 categories.get(selectedCategory).add(newProduct);
                 showAlert("Erfolg", "Neues Produkt wurde hinzugefügt.");
             }
-            
+
             clearForm();
             refreshTable();
             updateCategoryCombo();
             updateCategoryList();
-            
+
         } catch (NumberFormatException e) {
             showAlert("Fehler", "Bitte gültigen Preis eingeben (z.B. 4.50).");
         }
@@ -512,6 +509,7 @@ public class BackendWindow {
         nameField.clear();
         priceField.clear();
         categorySelectCombo.setValue(null);
+        editingProduct = null;
     }
     
     private void addCategory() {
@@ -562,14 +560,13 @@ public class BackendWindow {
         categoryFilterCombo.getItems().clear();
         categoryFilterCombo.getItems().add("Alle Kategorien");
         categoryFilterCombo.getItems().addAll(categories.keySet());
-        
+
         if (categories.containsKey(currentSelection)) {
             categoryFilterCombo.setValue(currentSelection);
         } else {
             categoryFilterCombo.setValue("Alle Kategorien");
         }
-        
-        // Auch das Auswahl-ComboBox aktualisieren
+
         categorySelectCombo.getItems().clear();
         categorySelectCombo.getItems().addAll(categories.keySet());
     }
@@ -579,7 +576,6 @@ public class BackendWindow {
         dialogPane.setStyle("-fx-background-color: #21262d; -fx-border-color: #30363d; " +
                            "-fx-border-radius: 10; -fx-background-radius: 10;");
         
-        // Text-Styling
         Label contentLabel = (Label) dialogPane.lookup(".content.label");
         if (contentLabel != null) {
             contentLabel.setStyle("-fx-text-fill: #c9d1d9; -fx-font-size: 14px;");
@@ -590,7 +586,6 @@ public class BackendWindow {
             headerLabel.setStyle("-fx-text-fill: #c9d1d9; -fx-font-weight: bold;");
         }
         
-        // Button-Styling
         Button okButton = (Button) dialogPane.lookupButton(ButtonType.OK);
         if (okButton != null) {
             okButton.setStyle("-fx-background-color: #27ae60; -fx-text-fill: white; " +

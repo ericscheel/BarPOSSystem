@@ -49,6 +49,7 @@ class User {
     
     // Getter und Setter
     public String getName() { return name; }
+    public void setName(String name) { this.name = name; } // hinzugefügt
     public String getPIN() { return pin; }
     public UserRole getRole() { return role; }
     public boolean isActive() { return isActive; }
@@ -472,23 +473,19 @@ class UserManagementDialog {
         TableColumn<User, Void> actionCol = new TableColumn<>("Aktionen");
         actionCol.setStyle("-fx-background-color: #30363d; -fx-text-fill: #c9d1d9; -fx-font-weight: bold;");
         actionCol.setCellFactory(col -> new TableCell<User, Void>() {
-            private final Button editBtn = new Button("Bearbeiten");
-            private final Button deleteBtn = new Button("Löschen");
-            
-            {
-                editBtn.setStyle("-fx-background-color: #f39c12; -fx-text-fill: white; -fx-padding: 8 16;");
-                deleteBtn.setStyle("-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-padding: 8 16;");
-                
-                editBtn.setOnAction(e -> editUser(getTableRow().getItem()));
-                deleteBtn.setOnAction(e -> deleteUser(getTableRow().getItem()));
-            }
-            
             @Override
             protected void updateItem(Void item, boolean empty) {
                 super.updateItem(item, empty);
-                if (empty) {
+                if (empty || getTableRow() == null || getTableRow().getItem() == null) {
                     setGraphic(null);
                 } else {
+                    User user = getTableRow().getItem();
+                    Button editBtn = new Button("Bearbeiten");
+                    Button deleteBtn = new Button("Löschen");
+                    editBtn.setStyle("-fx-background-color: #f39c12; -fx-text-fill: white; -fx-padding: 8 16;");
+                    deleteBtn.setStyle("-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-padding: 8 16;");
+                    editBtn.setOnAction(e -> editUser(user));
+                    deleteBtn.setOnAction(e -> deleteUser(user));
                     HBox buttons = new HBox(10);
                     buttons.getChildren().addAll(editBtn, deleteBtn);
                     setGraphic(buttons);
@@ -626,12 +623,114 @@ class UserManagementDialog {
     
     private void editUser(User user) {
         if (user != null) {
-            showAlert("Info", "Benutzer: " + user.getName() + 
-                     "\nPIN: ••••\nRolle: " + user.getRole().getDisplayName() +
-                     "\n\nBearbeitung wird in einer zukünftigen Version implementiert.");
+            Dialog<ButtonType> dialog = new Dialog<>();
+            dialog.setTitle("Benutzer bearbeiten");
+            dialog.setHeaderText("Benutzerdaten ändern");
+
+            DialogPane dialogPane = dialog.getDialogPane();
+            dialogPane.setStyle("-fx-background-color: #21262d; -fx-border-color: #30363d; " +
+                               "-fx-border-width: 2; -fx-border-radius: 10; -fx-background-radius: 10;");
+
+            GridPane grid = new GridPane();
+            grid.setHgap(15);
+            grid.setVgap(15);
+            grid.setPadding(new Insets(20));
+
+            Label nameLabel = new Label("Name:");
+            nameLabel.setStyle("-fx-text-fill: #c9d1d9; -fx-font-size: 14px; -fx-font-weight: bold;");
+
+            Label pinLabel = new Label("PIN:");
+            pinLabel.setStyle("-fx-text-fill: #c9d1d9; -fx-font-size: 14px; -fx-font-weight: bold;");
+
+            Label roleLabel = new Label("Rolle:");
+            roleLabel.setStyle("-fx-text-fill: #c9d1d9; -fx-font-size: 14px; -fx-font-weight: bold;");
+
+            TextField nameField = new TextField(user.getName());
+            nameField.setPrefWidth(200);
+            nameField.setStyle("-fx-background-color: #0d1117; -fx-text-fill: #c9d1d9; " +
+                              "-fx-border-color: #30363d; -fx-border-radius: 8; " +
+                              "-fx-background-radius: 8; -fx-padding: 8; " +
+                              "-fx-prompt-text-fill: #6e7681; -fx-font-size: 14px;");
+
+            TextField pinField = new TextField(user.getPIN());
+            pinField.setPrefWidth(200);
+            pinField.setStyle("-fx-background-color: #0d1117; -fx-text-fill: #c9d1d9; " +
+                             "-fx-border-color: #30363d; -fx-border-radius: 8; " +
+                             "-fx-background-radius: 8; -fx-padding: 8; " +
+                             "-fx-prompt-text-fill: #6e7681; -fx-font-size: 14px;");
+
+            ComboBox<UserRole> roleCombo = new ComboBox<>();
+            roleCombo.getItems().addAll(UserRole.values());
+            roleCombo.setValue(user.getRole());
+            roleCombo.setPrefWidth(200);
+            roleCombo.setStyle("-fx-background-color: #0d1117; -fx-text-fill: #c9d1d9; " +
+                              "-fx-border-color: #30363d; -fx-border-radius: 8; " +
+                              "-fx-background-radius: 8;");
+
+            grid.add(nameLabel, 0, 0);
+            grid.add(nameField, 1, 0);
+            grid.add(pinLabel, 0, 1);
+            grid.add(pinField, 1, 1);
+            grid.add(roleLabel, 0, 2);
+            grid.add(roleCombo, 1, 2);
+
+            dialogPane.setContent(grid);
+            dialogPane.getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+            Button okButton = (Button) dialogPane.lookupButton(ButtonType.OK);
+            if (okButton != null) {
+                okButton.setStyle("-fx-background-color: #00d488; -fx-text-fill: white; " +
+                                 "-fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 8 16; " +
+                                 "-fx-font-weight: bold;");
+            }
+            Button cancelButton = (Button) dialogPane.lookupButton(ButtonType.CANCEL);
+            if (cancelButton != null) {
+                cancelButton.setStyle("-fx-background-color: #6c757d; -fx-text-fill: white; " +
+                                     "-fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 8 16;");
+            }
+
+            Optional<ButtonType> result = dialog.showAndWait();
+            if (result.isPresent() && result.get() == ButtonType.OK) {
+                String newName = nameField.getText().trim();
+                String newPin = pinField.getText().trim();
+                UserRole newRole = roleCombo.getValue();
+
+                if (!newName.isEmpty() && newPin.length() == 4 && newPin.matches("\\d{4}")) {
+                    // Prüfe ob PIN geändert und schon vergeben ist
+                    if (!newPin.equals(user.getPIN()) && pinManager.getUserByPIN(newPin) != null) {
+                        showAlert("Fehler", "PIN bereits vergeben. Bitte andere PIN wählen.");
+                        return;
+                    }
+                    // Admin-PIN darf nicht geändert werden
+                    if (user.getPIN().equals("0000") && !newPin.equals("0000")) {
+                        showAlert("Fehler", "Admin-PIN kann nicht geändert werden.");
+                        return;
+                    }
+                    // Werte setzen
+                    if (!newPin.equals(user.getPIN())) {
+                        // PIN im Map ändern: alten User entfernen, neuen User anlegen
+                        pinManager.removeUser(user.getPIN());
+                        pinManager.addNewUser(newName, newPin, newRole);
+                        // Optional: Aktiv/Inaktiv übernehmen
+                        User newUser = pinManager.getUserByPIN(newPin);
+                        if (newUser != null) {
+                            newUser.setActive(user.isActive());
+                        }
+                    } else {
+                        user.setName(newName);
+                        user.setRole(newRole);
+                        user.setPIN(newPin);
+                        // user.setActive(user.isActive()); // keine Änderung
+                    }
+                    refreshUserTable();
+                    showAlert("Erfolg", "Benutzerdaten wurden aktualisiert.");
+                } else {
+                    showAlert("Fehler", "Bitte gültigen Namen und 4-stellige PIN eingeben.");
+                }
+            }
         }
     }
-    
+
     private void deleteUser(User user) {
         if (user != null && !user.getPIN().equals("0000")) {
             Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
@@ -641,8 +740,14 @@ class UserManagementDialog {
             
             DialogPane dialogPane = alert.getDialogPane();
             dialogPane.setStyle("-fx-background-color: #21262d; -fx-border-color: #30363d;");
-            dialogPane.lookup(".content.label").setStyle("-fx-text-fill: #c9d1d9;");
-            dialogPane.lookup(".header-panel .label").setStyle("-fx-text-fill: #c9d1d9;");
+            Label contentLabel = (Label) dialogPane.lookup(".content.label");
+            if (contentLabel != null) {
+                contentLabel.setStyle("-fx-text-fill: #c9d1d9;");
+            }
+            Label headerLabel = (Label) dialogPane.lookup(".header-panel .label");
+            if (headerLabel != null) {
+                headerLabel.setStyle("-fx-text-fill: #c9d1d9;");
+            }
             
             if (alert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
                 pinManager.removeUser(user.getPIN());
@@ -653,35 +758,29 @@ class UserManagementDialog {
             showAlert("Fehler", "Admin-Benutzer kann nicht gelöscht werden.");
         }
     }
-    
+
     private void showAlert(String title, String message) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle(title);
         alert.setHeaderText(null);
         alert.setContentText(message);
-        
+
         DialogPane dialogPane = alert.getDialogPane();
         dialogPane.setStyle("-fx-background-color: #21262d; -fx-border-color: #30363d; " +
                            "-fx-border-width: 2; -fx-border-radius: 10; -fx-background-radius: 10;");
-        
-        // Content-Text lesbar machen
+
         Label contentLabel = (Label) dialogPane.lookup(".content.label");
         if (contentLabel != null) {
             contentLabel.setStyle("-fx-text-fill: #c9d1d9; -fx-font-size: 14px;");
         }
-        
-        // OK-Button stylen
+
         Button okButton = (Button) dialogPane.lookupButton(ButtonType.OK);
         if (okButton != null) {
             okButton.setStyle("-fx-background-color: #00d488; -fx-text-fill: white; " +
                              "-fx-border-radius: 6; -fx-background-radius: 6; " +
                              "-fx-padding: 8 16; -fx-font-weight: bold;");
         }
-        
+
         alert.showAndWait();
-    }
-    
-    public void show() {
-        stage.show();
     }
 }

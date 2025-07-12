@@ -10,4 +10,13 @@ class ProductTest {
         assertEquals("Cola", p.getName());
         assertEquals(2.5, p.getPrice());
     }
+
+    @Test
+    void testSetNameAndSetPrice() {
+        Product p = new Product("Cola", 2.5);
+        p.setName("Fanta");
+        p.setPrice(3.0);
+        assertEquals("Fanta", p.getName());
+        assertEquals(3.0, p.getPrice());
+    }
 }

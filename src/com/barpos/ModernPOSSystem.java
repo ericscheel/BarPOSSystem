@@ -73,7 +73,7 @@ public class ModernPOSSystem extends Application {
         // Top - Navigation und geparkte Bestellungen
         HBox topPanel = createTopPanel();
         mainLayout.setTop(topPanel);
-        
+
         Scene scene = new Scene(mainLayout, 1600, 900);
         primaryStage.setScene(scene);
         primaryStage.show();
@@ -122,26 +122,24 @@ public class ModernPOSSystem extends Application {
                          "-fx-border-color: #30363d; -fx-border-width: 0 0 2 0;");
         topPanel.setAlignment(Pos.CENTER_LEFT);
         topPanel.setPrefHeight(80);
-        
-        // Benutzer-Info anzeigen
+
         PINManager pinManager = PINManager.getInstance();
         User currentUser = pinManager.getCurrentUser();
-        
+
         VBox userInfo = new VBox(2);
         Label titleLabel = new Label("Gifthütte - Kassensystem");
         titleLabel.setFont(Font.font("Segoe UI", FontWeight.BOLD, 28));
         titleLabel.setStyle("-fx-text-fill: #00ff88; -fx-effect: dropshadow(gaussian, #00ff88, 15, 0, 0, 0);");
-        
+
         Label userLabel = new Label("👤 " + currentUser.getName() + " (" + currentUser.getRole().getDisplayName() + ")");
         userLabel.setFont(Font.font("Segoe UI", FontWeight.NORMAL, 14));
         userLabel.setStyle("-fx-text-fill: #c9d1d9;");
-        
+
         userInfo.getChildren().addAll(titleLabel, userLabel);
-        
-        // Geparkte Bestellungen
+
         Label parkedLabel = new Label("Geparkte Bestellungen:");
         parkedLabel.setStyle("-fx-text-fill: #c9d1d9; -fx-font-size: 16px;");
-        
+
         parkedOrdersCombo = new ComboBox<>();
         parkedOrdersCombo.setPromptText("Bestellung auswählen");
         parkedOrdersCombo.setPrefWidth(250);
@@ -149,40 +147,39 @@ public class ModernPOSSystem extends Application {
         parkedOrdersCombo.setStyle("-fx-background-color: #21262d; -fx-text-fill: #c9d1d9; " +
                                   "-fx-border-color: #30363d; -fx-border-radius: 12; " +
                                   "-fx-background-radius: 12; -fx-font-size: 14px;");
-        
+
         Button loadParkedButton = createTouchButton("Laden", "#00d488", "#00ff88", 120, 50);
         loadParkedButton.setOnAction(e -> loadParkedOrder());
-        
-        // Geschützte Buttons basierend auf Berechtigungen
+
         HBox protectedButtons = new HBox(15);
-        
+
+        // Buttons werden immer neu erzeugt, damit sie aktuelle Berechtigungen und Actions haben
         if (pinManager.canAccessBackend()) {
             Button backendButton = createTouchButton("Backend", "#6c5ce7", "#a29bfe", 120, 50);
             backendButton.setOnAction(e -> openBackend());
             protectedButtons.getChildren().add(backendButton);
         }
-        
+
         if (pinManager.canAccessCashBook()) {
             Button cashBookButton = createTouchButton("Kassenbuch", "#fdcb6e", "#f39c12", 140, 50);
             cashBookButton.setOnAction(e -> showCashBook());
             protectedButtons.getChildren().add(cashBookButton);
         }
-        
+
         if (pinManager.canManageUsers()) {
             Button userMgmtButton = createTouchButton("Benutzer", "#8e44ad", "#9b59b6", 120, 50);
             userMgmtButton.setOnAction(e -> openUserManagement());
             protectedButtons.getChildren().add(userMgmtButton);
         }
-        
-        // Logout-Button
+
         Button logoutButton = createTouchButton("Abmelden", "#e74c3c", "#ff6b6b", 120, 50);
         logoutButton.setOnAction(e -> logout());
         protectedButtons.getChildren().add(logoutButton);
-        
-        topPanel.getChildren().addAll(userInfo, new Region(), parkedLabel, 
+
+        topPanel.getChildren().addAll(userInfo, new Region(), parkedLabel,
                                      parkedOrdersCombo, loadParkedButton, protectedButtons);
         HBox.setHgrow(topPanel.getChildren().get(1), Priority.ALWAYS);
-        
+
         return topPanel;
     }
     
@@ -819,32 +816,38 @@ public class ModernPOSSystem extends Application {
         alert.setTitle("Abmelden");
         alert.setHeaderText("Möchten Sie sich wirklich abmelden?");
         alert.setContentText("Sie müssen sich danach erneut anmelden.");
-        
-        // Dark Theme für Alert Dialog
+
         DialogPane dialogPane = alert.getDialogPane();
         dialogPane.setStyle("-fx-background-color: #21262d; -fx-border-color: #30363d; " +
                            "-fx-border-radius: 10; -fx-background-radius: 10;");
-        
-        dialogPane.lookup(".content.label").setStyle("-fx-text-fill: #c9d1d9; -fx-font-size: 14px;");
-        dialogPane.lookup(".header-panel .label").setStyle("-fx-text-fill: #c9d1d9; -fx-font-weight: bold;");
-        
-        dialogPane.lookupButton(ButtonType.OK).setStyle(
-            "-fx-background-color: #e74c3c; -fx-text-fill: white; " +
-            "-fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 8 16;");
-        
-        dialogPane.lookupButton(ButtonType.CANCEL).setStyle(
-            "-fx-background-color: #6c757d; -fx-text-fill: white; " +
-            "-fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 8 16;");
-        
+
+        Label contentLabel = (Label) dialogPane.lookup(".content.label");
+        if (contentLabel != null) {
+            contentLabel.setStyle("-fx-text-fill: #c9d1d9; -fx-font-size: 14px;");
+        }
+        Label headerLabel = (Label) dialogPane.lookup(".header-panel .label");
+        if (headerLabel != null) {
+            headerLabel.setStyle("-fx-text-fill: #c9d1d9; -fx-font-weight: bold;");
+        }
+
+        Button okButton = (Button) dialogPane.lookupButton(ButtonType.OK);
+        if (okButton != null) {
+            okButton.setStyle("-fx-background-color: #e74c3c; -fx-text-fill: white; " +
+                             "-fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 8 16;");
+        }
+        Button cancelButton = (Button) dialogPane.lookupButton(ButtonType.CANCEL);
+        if (cancelButton != null) {
+            cancelButton.setStyle("-fx-background-color: #6c757d; -fx-text-fill: white; " +
+                                 "-fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 8 16;");
+        }
+
         Optional<ButtonType> result = alert.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
             PINManager.getInstance().logout();
-            
-            // Aktuelle Stage schließen und neu starten
+
             Stage currentStage = (Stage) totalLabel.getScene().getWindow();
             currentStage.close();
-            
-            // Neue Instanz starten
+
             Platform.runLater(() -> {
                 try {
                     new ModernPOSSystem().start(new Stage());
@@ -860,88 +863,85 @@ public class ModernPOSSystem extends Application {
         alert.setTitle(title);
         alert.setHeaderText(null);
         alert.setContentText(message);
-        
-        // Dark Theme für Alert Dialog
+
         DialogPane dialogPane = alert.getDialogPane();
         dialogPane.setStyle("-fx-background-color: #21262d; -fx-border-color: #30363d; " +
                            "-fx-border-radius: 10; -fx-background-radius: 10;");
-        
-        // Text-Styling
-        dialogPane.lookup(".content.label").setStyle("-fx-text-fill: #c9d1d9; -fx-font-size: 14px;");
-        
-        // Button-Styling
-        dialogPane.lookupButton(ButtonType.OK).setStyle(
-            "-fx-background-color: linear-gradient(to bottom, #00d488, #00b574); " +
-            "-fx-text-fill: white; -fx-border-radius: 6; -fx-background-radius: 6; " +
-            "-fx-padding: 8 16; -fx-font-weight: bold;");
-        
+
+        Label contentLabel = (Label) dialogPane.lookup(".content.label");
+        if (contentLabel != null) {
+            contentLabel.setStyle("-fx-text-fill: #c9d1d9; -fx-font-size: 14px;");
+        }
+
+        Button okButton = (Button) dialogPane.lookupButton(ButtonType.OK);
+        if (okButton != null) {
+            okButton.setStyle("-fx-background-color: linear-gradient(to bottom, #00d488, #00b574); " +
+                             "-fx-text-fill: white; -fx-border-radius: 6; -fx-background-radius: 6; " +
+                             "-fx-padding: 8 16; -fx-font-weight: bold;");
+        }
+
         alert.showAndWait();
     }
-    
-    public static void main(String[] args) {
-        launch(args);
-    }
-}
 
-// Datenklassen
-class Product {
-    private String name;
-    private double price;
-    
-    public Product(String name, double price) {
-        this.name = name;
-        this.price = price;
+    // Datenklassen
+    class Product {
+        private String name;
+        private double price;
+        
+        public Product(String name, double price) {
+            this.name = name;
+            this.price = price;
+        }
+        
+        public String getName() { return name; }
+        public double getPrice() { return price; }
+        public void setName(String name) { this.name = name; }
+        public void setPrice(double price) { this.price = price; }
     }
-    
-    public String getName() { return name; }
-    public double getPrice() { return price; }
-    public void setName(String name) { this.name = name; }
-    public void setPrice(double price) { this.price = price; }
-}
 
-class OrderItem {
-    private Product product;
-    private int quantity;
-    private double discount = 0.0;
-    
-    public OrderItem(Product product, int quantity) {
-        this.product = product;
-        this.quantity = quantity;
+    class OrderItem {
+        private Product product;
+        private int quantity;
+        private double discount = 0.0;
+        
+        public OrderItem(Product product, int quantity) {
+            this.product = product;
+            this.quantity = quantity;
+        }
+        
+        public Product getProduct() { return product; }
+        public int getQuantity() { return quantity; }
+        public double getDiscount() { return discount; }
+        public void setQuantity(int quantity) { this.quantity = quantity; }
+        public void setDiscount(double discount) { this.discount = discount; }
     }
-    
-    public Product getProduct() { return product; }
-    public int getQuantity() { return quantity; }
-    public double getDiscount() { return discount; }
-    public void setQuantity(int quantity) { this.quantity = quantity; }
-    public void setDiscount(double discount) { this.discount = discount; }
-}
 
-class Transaction {
-    private LocalDateTime timestamp;
-    private List<OrderItem> items;
-    private double total;
-    private double received;
-    private double change;
-    private String paymentMethod;
-    
-    public Transaction(LocalDateTime timestamp, List<OrderItem> items, double total, double received, double change, String paymentMethod) {
-        this.timestamp = timestamp;
-        this.items = items;
-        this.total = total;
-        this.received = received;
-        this.change = change;
-        this.paymentMethod = paymentMethod;
+    class Transaction {
+        private LocalDateTime timestamp;
+        private List<OrderItem> items;
+        private double total;
+        private double received;
+        private double change;
+        private String paymentMethod;
+        
+        public Transaction(LocalDateTime timestamp, List<OrderItem> items, double total, double received, double change, String paymentMethod) {
+            this.timestamp = timestamp;
+            this.items = items;
+            this.total = total;
+            this.received = received;
+            this.change = change;
+            this.paymentMethod = paymentMethod;
+        }
+        
+        // Konstruktor für Rückwärtskompatibilität
+        public Transaction(LocalDateTime timestamp, List<OrderItem> items, double total, double received, double change) {
+            this(timestamp, items, total, received, change, "Bar");
+        }
+        
+        public LocalDateTime getTimestamp() { return timestamp; }
+        public List<OrderItem> getItems() { return items; }
+        public double getTotal() { return total; }
+        public double getReceived() { return received; }
+        public double getChange() { return change; }
+        public String getPaymentMethod() { return paymentMethod; }
     }
-    
-    // Konstruktor für Rückwärtskompatibilität
-    public Transaction(LocalDateTime timestamp, List<OrderItem> items, double total, double received, double change) {
-        this(timestamp, items, total, received, change, "Bar");
-    }
-    
-    public LocalDateTime getTimestamp() { return timestamp; }
-    public List<OrderItem> getItems() { return items; }
-    public double getTotal() { return total; }
-    public double getReceived() { return received; }
-    public double getChange() { return change; }
-    public String getPaymentMethod() { return paymentMethod; }
-}
