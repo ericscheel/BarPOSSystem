@@ -439,15 +439,15 @@ public class BackendWindow {
             alert.setTitle("Produkt löschen");
             alert.setHeaderText("Möchten Sie dieses Produkt wirklich löschen?");
             alert.setContentText(product.getName() + " - €" + String.format("%.2f", product.getPrice()));
-            
-            // Dark Theme für Alert
+
             styleAlert(alert);
-            
+
             Optional<ButtonType> result = alert.showAndWait();
             if (result.isPresent() && result.get() == ButtonType.OK) {
-                // Produkt aus allen Kategorien entfernen
-                for (List<Product> products : categories.values()) {
-                    products.remove(product);
+                // Produkt aus der richtigen Kategorie entfernen
+                String category = findProductCategory(product);
+                if (categories.containsKey(category)) {
+                    categories.get(category).remove(product);
                 }
                 refreshTable();
                 updateCategoryCombo();
