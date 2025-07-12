@@ -80,39 +80,15 @@ public class ModernPOSSystem extends Application {
     }
     
     private void initializeData() {
-        // Beispiel-Kategorien und Produkte für eine Bar
-        List<Product> drinks = Arrays.asList(
-            new Product("Bier 0,5L", 4.50),
-            new Product("Weizen 0,5L", 4.80),
-            new Product("Cola 0,3L", 3.20),
-            new Product("Wasser 0,3L", 2.50)
-        );
-        
-        List<Product> cocktails = Arrays.asList(
-            new Product("Mojito", 8.50),
-            new Product("Caipirinha", 7.80),
-            new Product("Long Island", 9.50),
-            new Product("Cuba Libre", 6.90)
-        );
-        
-        List<Product> shots = Arrays.asList(
-            new Product("Vodka", 3.50),
-            new Product("Tequila", 4.00),
-            new Product("Jägermeister", 3.80),
-            new Product("Sambuca", 4.20)
-        );
-        
-        List<Product> snacks = Arrays.asList(
-            new Product("Erdnüsse", 2.50),
-            new Product("Chips", 3.00),
-            new Product("Oliven", 4.50),
-            new Product("Käsewürfel", 5.00)
-        );
-        
-        categories.put("Getränke", drinks);
-        categories.put("Cocktails", cocktails);
-        categories.put("Shots", shots);
-        categories.put("Snacks", snacks);
+        try {
+            DatabaseManager.init();
+            categories.clear();
+            for (String cat : DatabaseManager.loadCategories()) {
+                categories.put(cat, DatabaseManager.loadProducts(cat));
+            }
+        } catch (Exception e) {
+            showAlert("Fehler", "Datenbank konnte nicht geladen werden.");
+        }
     }
     
     private HBox createTopPanel() {
@@ -488,8 +464,13 @@ public class ModernPOSSystem extends Application {
     
     private void showCategoryProducts(String category) {
         categoryButtons.getChildren().clear();
-        List<Product> products = categories.get(category);
-        
+        List<Product> products;
+        try {
+            products = DatabaseManager.loadProducts(category);
+        } catch (Exception e) {
+            showAlert("Fehler", "Produkte konnten nicht geladen werden.");
+            return;
+        }
         int col = 0, row = 0;
         for (Product product : products) {
             Button productBtn = new Button(product.getName() + "\n€" + String.format("%.2f", product.getPrice()));

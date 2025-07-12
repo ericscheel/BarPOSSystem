@@ -13,7 +13,6 @@ import javafx.beans.property.SimpleStringProperty;
 import java.util.*;
 
 public class BackendWindow {
-    private Map<String, List<Product>> categories;
     private Stage stage;
     private TableView<Product> productTable;
     private ComboBox<String> categoryFilterCombo;
@@ -22,14 +21,20 @@ public class BackendWindow {
     private ComboBox<String> categorySelectCombo;
     private TextField newCategoryField;
     private VBox existingCategoriesBox;
-    private Product editingProduct = null; // aktuell zu bearbeitendes Produkt
-    
-    public BackendWindow(Map<String, List<Product>> categories) {
-        this.categories = categories;
+    private String editingCategory = null;
+    private Product editingProduct = null;
+
+    public BackendWindow() {
         initializeWindow();
     }
-    
+
     private void initializeWindow() {
+        try {
+            DatabaseManager.init();
+        } catch (Exception e) {
+            showAlert("Fehler", "Datenbank konnte nicht initialisiert werden.");
+            return;
+        }
         stage = new Stage();
         stage.setTitle("Backend - Produktverwaltung");
         stage.setWidth(1200);
@@ -65,6 +70,11 @@ public class BackendWindow {
         
         Scene scene = new Scene(mainLayout);
         stage.setScene(scene);
+        
+        // Lade Kategorien und Produkte aus Datenbank
+        updateCategoryCombo();
+        refreshTable();
+        updateCategoryList();
     }
     
     private HBox createHeader() {
@@ -107,7 +117,6 @@ public class BackendWindow {
         
         categoryFilterCombo = new ComboBox<>();
         categoryFilterCombo.getItems().add("Alle Kategorien");
-        categoryFilterCombo.getItems().addAll(categories.keySet());
         categoryFilterCombo.setValue("Alle Kategorien");
         categoryFilterCombo.setPrefWidth(200);
         categoryFilterCombo.setStyle("-fx-background-color: #0d1117; -fx-text-fill: #c9d1d9; " +
@@ -342,28 +351,69 @@ public class BackendWindow {
         return categorySection;
     }
     
+    private void refreshTable() {
+        productTable.getItems().clear();
+        String selectedCategory = categoryFilterCombo.getValue();
+        try {
+            if ("Alle Kategorien".equals(selectedCategory)) {
+                for (String cat : DatabaseManager.loadCategories()) {
+                    productTable.getItems().addAll(DatabaseManager.loadProducts(cat));
+                }
+            } else {
+                productTable.getItems().addAll(DatabaseManager.loadProducts(selectedCategory));
+            }
+        } catch (Exception e) {
+            showAlert("Fehler", "Produkte konnten nicht geladen werden.");
+        }
+    }
+    
+    private void updateCategoryCombo() {
+        try {
+            List<String> categories = DatabaseManager.loadCategories();
+            String currentSelection = categoryFilterCombo.getValue();
+            categoryFilterCombo.getItems().clear();
+            categoryFilterCombo.getItems().add("Alle Kategorien");
+            categoryFilterCombo.getItems().addAll(categories);
+
+            if (categories.contains(currentSelection)) {
+                categoryFilterCombo.setValue(currentSelection);
+            } else {
+                categoryFilterCombo.setValue("Alle Kategorien");
+            }
+
+            categorySelectCombo.getItems().clear();
+            categorySelectCombo.getItems().addAll(categories);
+        } catch (Exception e) {
+            showAlert("Fehler", "Kategorien konnten nicht geladen werden.");
+        }
+    }
+    
     private void updateCategoryList() {
-        existingCategoriesBox.getChildren().clear();
-        
-        for (String category : categories.keySet()) {
-            HBox categoryRow = new HBox(15);
-            categoryRow.setAlignment(Pos.CENTER_LEFT);
-            categoryRow.setPadding(new Insets(10));
-            categoryRow.setStyle("-fx-background-color: #0d1117; -fx-border-radius: 8; " +
-                                "-fx-background-radius: 8; -fx-border-color: #30363d; -fx-border-width: 1;");
-            
-            Label catLabel = new Label(category + " (" + categories.get(category).size() + " Produkte)");
-            catLabel.setPrefWidth(300);
-            catLabel.setStyle("-fx-text-fill: #c9d1d9; -fx-font-size: 14px;");
-            
-            Button deleteCatButton = createStyledButton("Löschen", "#e74c3c", 100, 35);
-            deleteCatButton.setOnAction(e -> deleteCategory(category));
-            
-            Region spacer = new Region();
-            HBox.setHgrow(spacer, Priority.ALWAYS);
-            
-            categoryRow.getChildren().addAll(catLabel, spacer, deleteCatButton);
-            existingCategoriesBox.getChildren().add(categoryRow);
+        try {
+            existingCategoriesBox.getChildren().clear();
+            for (String category : DatabaseManager.loadCategories()) {
+                int size = DatabaseManager.loadProducts(category).size();
+                HBox categoryRow = new HBox(15);
+                categoryRow.setAlignment(Pos.CENTER_LEFT);
+                categoryRow.setPadding(new Insets(10));
+                categoryRow.setStyle("-fx-background-color: #0d1117; -fx-border-radius: 8; " +
+                                    "-fx-background-radius: 8; -fx-border-color: #30363d; -fx-border-width: 1;");
+
+                Label catLabel = new Label(category + " (" + size + " Produkte)");
+                catLabel.setPrefWidth(300);
+                catLabel.setStyle("-fx-text-fill: #c9d1d9; -fx-font-size: 14px;");
+
+                Button deleteCatButton = createStyledButton("Löschen", "#e74c3c", 100, 35);
+                deleteCatButton.setOnAction(e -> deleteCategory(category));
+
+                Region spacer = new Region();
+                HBox.setHgrow(spacer, Priority.ALWAYS);
+
+                categoryRow.getChildren().addAll(catLabel, spacer, deleteCatButton);
+                existingCategoriesBox.getChildren().add(categoryRow);
+            }
+        } catch (Exception e) {
+            showAlert("Fehler", "Kategorien konnten nicht geladen werden.");
         }
     }
     
@@ -395,30 +445,21 @@ public class BackendWindow {
         return colorMap.getOrDefault(color, color);
     }
     
-    private void refreshTable() {
-        productTable.getItems().clear();
-        
-        String selectedCategory = categoryFilterCombo.getValue();
-        if ("Alle Kategorien".equals(selectedCategory)) {
-            for (List<Product> products : categories.values()) {
-                productTable.getItems().addAll(products);
-            }
-        } else {
-            if (categories.containsKey(selectedCategory)) {
-                productTable.getItems().addAll(categories.get(selectedCategory));
-            }
-        }
-    }
-    
     private void filterProducts() {
         refreshTable();
     }
     
     private String findProductCategory(Product product) {
-        for (Map.Entry<String, List<Product>> entry : categories.entrySet()) {
-            if (entry.getValue().contains(product)) {
-                return entry.getKey();
+        try {
+            for (String cat : DatabaseManager.loadCategories()) {
+                for (Product p : DatabaseManager.loadProducts(cat)) {
+                    if (p.getName().equals(product.getName()) && p.getPrice() == product.getPrice()) {
+                        return cat;
+                    }
+                }
             }
+        } catch (Exception e) {
+            // ignore
         }
         return "Unbekannt";
     }
@@ -426,34 +467,10 @@ public class BackendWindow {
     private void editProduct(Product product) {
         if (product != null) {
             editingProduct = product;
+            editingCategory = findProductCategory(product);
             nameField.setText(product.getName());
             priceField.setText(String.valueOf(product.getPrice()));
-            String category = findProductCategory(product);
-            categorySelectCombo.setValue(category);
-        }
-    }
-    
-    private void deleteProduct(Product product) {
-        if (product != null) {
-            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-            alert.setTitle("Produkt löschen");
-            alert.setHeaderText("Möchten Sie dieses Produkt wirklich löschen?");
-            alert.setContentText(product.getName() + " - €" + String.format("%.2f", product.getPrice()));
-
-            styleAlert(alert);
-
-            Optional<ButtonType> result = alert.showAndWait();
-            if (result.isPresent() && result.get() == ButtonType.OK) {
-                // Produkt aus der richtigen Kategorie entfernen
-                String category = findProductCategory(product);
-                if (categories.containsKey(category)) {
-                    categories.get(category).remove(product);
-                }
-                refreshTable();
-                updateCategoryCombo();
-                updateCategoryList();
-                showAlert("Erfolg", "Produkt wurde gelöscht.");
-            }
+            categorySelectCombo.setValue(editingCategory);
         }
     }
     
@@ -472,26 +489,12 @@ public class BackendWindow {
 
             if (editingProduct != null) {
                 // Produkt bearbeiten
-                String oldCategory = findProductCategory(editingProduct);
-                if (!oldCategory.equals(selectedCategory)) {
-                    // Kategorie gewechselt: Produkt verschieben
-                    categories.get(oldCategory).remove(editingProduct);
-                    categories.get(selectedCategory).add(editingProduct);
-                }
-                editingProduct.setName(name);
-                editingProduct.setPrice(price);
+                DatabaseManager.updateProduct(editingProduct, editingCategory,
+                        new Product(name, price), selectedCategory);
                 showAlert("Erfolg", "Produkt wurde aktualisiert.");
             } else {
                 // Neues Produkt hinzufügen
-                // Prüfe ob Produktname in Kategorie schon existiert
-                for (Product p : categories.get(selectedCategory)) {
-                    if (p.getName().equalsIgnoreCase(name)) {
-                        showAlert("Fehler", "Produktname existiert bereits in dieser Kategorie.");
-                        return;
-                    }
-                }
-                Product newProduct = new Product(name, price);
-                categories.get(selectedCategory).add(newProduct);
+                DatabaseManager.addProduct(new Product(name, price), selectedCategory);
                 showAlert("Erfolg", "Neues Produkt wurde hinzugefügt.");
             }
 
@@ -500,8 +503,85 @@ public class BackendWindow {
             updateCategoryCombo();
             updateCategoryList();
 
-        } catch (NumberFormatException e) {
-            showAlert("Fehler", "Bitte gültigen Preis eingeben (z.B. 4.50).");
+        } catch (Exception e) {
+            showAlert("Fehler", "Produkt konnte nicht gespeichert werden.");
+        }
+    }
+    
+    private void deleteProduct(Product product) {
+        if (product != null) {
+            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+            alert.setTitle("Produkt löschen");
+            alert.setHeaderText("Möchten Sie dieses Produkt wirklich löschen?");
+            alert.setContentText(product.getName() + " - €" + String.format("%.2f", product.getPrice()));
+
+            styleAlert(alert);
+
+            Optional<ButtonType> result = alert.showAndWait();
+            if (result.isPresent() && result.get() == ButtonType.OK) {
+                try {
+                    String category = findProductCategory(product);
+                    DatabaseManager.deleteProduct(product, category);
+                    refreshTable();
+                    updateCategoryCombo();
+                    updateCategoryList();
+                    showAlert("Erfolg", "Produkt wurde gelöscht.");
+                } catch (Exception e) {
+                    showAlert("Fehler", "Produkt konnte nicht gelöscht werden.");
+                }
+            }
+        }
+    }
+    
+    private void addCategory() {
+        String newCategory = newCategoryField.getText().trim();
+        if (newCategory.isEmpty()) {
+            showAlert("Fehler", "Bitte Kategoriename eingeben.");
+            return;
+        }
+        try {
+            List<String> categories = DatabaseManager.loadCategories();
+            if (categories.contains(newCategory)) {
+                showAlert("Fehler", "Kategorie existiert bereits.");
+                return;
+            }
+            // Dummy-Produkt anlegen, damit Kategorie existiert
+            DatabaseManager.addProduct(new Product("_KategorieDummy_", 0.0), newCategory);
+            DatabaseManager.deleteProduct(new Product("_KategorieDummy_", 0.0), newCategory);
+            newCategoryField.clear();
+            updateCategoryCombo();
+            updateCategoryList();
+            showAlert("Erfolg", "Kategorie '" + newCategory + "' wurde hinzugefügt.");
+        } catch (Exception e) {
+            showAlert("Fehler", "Kategorie konnte nicht hinzugefügt werden.");
+        }
+    }
+    
+    private void deleteCategory(String category) {
+        try {
+            int size = DatabaseManager.loadProducts(category).size();
+            if (size == 0) {
+                Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+                alert.setTitle("Kategorie löschen");
+                alert.setHeaderText("Möchten Sie diese Kategorie wirklich löschen?");
+                alert.setContentText(category);
+
+                styleAlert(alert);
+
+                Optional<ButtonType> result = alert.showAndWait();
+                if (result.isPresent() && result.get() == ButtonType.OK) {
+                    DatabaseManager.deleteCategory(category);
+                    updateCategoryCombo();
+                    updateCategoryList();
+                    refreshTable();
+                    showAlert("Erfolg", "Kategorie wurde gelöscht.");
+                }
+            } else {
+                showAlert("Fehler", "Kategorie kann nicht gelöscht werden - enthält noch " +
+                         size + " Produkte.");
+            }
+        } catch (Exception e) {
+            showAlert("Fehler", "Kategorie konnte nicht gelöscht werden.");
         }
     }
     
@@ -510,67 +590,8 @@ public class BackendWindow {
         priceField.clear();
         categorySelectCombo.setValue(null);
         editingProduct = null;
+        editingCategory = null;
     }
-    
-    private void addCategory() {
-        String newCategory = newCategoryField.getText().trim();
-        
-        if (newCategory.isEmpty()) {
-            showAlert("Fehler", "Bitte Kategoriename eingeben.");
-            return;
-        }
-        
-        if (categories.containsKey(newCategory)) {
-            showAlert("Fehler", "Kategorie existiert bereits.");
-            return;
-        }
-        
-        categories.put(newCategory, new ArrayList<>());
-        newCategoryField.clear();
-        updateCategoryCombo();
-        updateCategoryList();
-        showAlert("Erfolg", "Kategorie '" + newCategory + "' wurde hinzugefügt.");
-    }
-    
-    private void deleteCategory(String category) {
-        if (categories.get(category).isEmpty()) {
-            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-            alert.setTitle("Kategorie löschen");
-            alert.setHeaderText("Möchten Sie diese Kategorie wirklich löschen?");
-            alert.setContentText(category);
-            
-            styleAlert(alert);
-            
-            Optional<ButtonType> result = alert.showAndWait();
-            if (result.isPresent() && result.get() == ButtonType.OK) {
-                categories.remove(category);
-                updateCategoryCombo();
-                updateCategoryList();
-                refreshTable();
-                showAlert("Erfolg", "Kategorie wurde gelöscht.");
-            }
-        } else {
-            showAlert("Fehler", "Kategorie kann nicht gelöscht werden - enthält noch " + 
-                     categories.get(category).size() + " Produkte.");
-        }
-    }
-    
-    private void updateCategoryCombo() {
-        String currentSelection = categoryFilterCombo.getValue();
-        categoryFilterCombo.getItems().clear();
-        categoryFilterCombo.getItems().add("Alle Kategorien");
-        categoryFilterCombo.getItems().addAll(categories.keySet());
-
-        if (categories.containsKey(currentSelection)) {
-            categoryFilterCombo.setValue(currentSelection);
-        } else {
-            categoryFilterCombo.setValue("Alle Kategorien");
-        }
-
-        categorySelectCombo.getItems().clear();
-        categorySelectCombo.getItems().addAll(categories.keySet());
-    }
-    
     private void styleAlert(Alert alert) {
         DialogPane dialogPane = alert.getDialogPane();
         dialogPane.setStyle("-fx-background-color: #21262d; -fx-border-color: #30363d; " +
