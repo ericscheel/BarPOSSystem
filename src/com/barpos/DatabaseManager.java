@@ -89,4 +89,18 @@ public class DatabaseManager {
             stmt.executeUpdate();
         }
     }
+
+    public static boolean productExists(Product product, String category) throws SQLException {
+        try (Connection conn = DriverManager.getConnection(DB_URL)) {
+            String sql = "SELECT COUNT(*) FROM products WHERE name = ? AND category = ?";
+            PreparedStatement stmt = conn.prepareStatement(sql);
+            stmt.setString(1, product.getName());
+            stmt.setString(2, category);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1) > 0;
+            }
+        }
+        return false;
+    }
 }
